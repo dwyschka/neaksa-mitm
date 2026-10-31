@@ -1,0 +1,11 @@
+# transcripts are as sensitive as the device credential
+captures/
+data/
+
+# local overrides
+.env
+*.local.yaml
+
+# noise
+*.log
+.DS_Store

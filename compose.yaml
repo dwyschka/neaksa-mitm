@@ -1,0 +1,42 @@
+name: neakasa-capture
+
+services:
+  capture:
+    build: .
+    image: neakasa-capture:latest
+    container_name: neakasa-capture
+    restart: unless-stopped
+
+    ports:
+      # the box talks here - published on every host interface, because the
+      # device resolves an IP, not a name. Keep 8999 on both sides: the UI
+      # prints the address to write into `regionBaseurl` from this port.
+      - "8999:8999"
+      # the UI stays on the loopback interface unless you widen it
+      - "${UI_BIND:-127.0.0.1}:${UI_PORT:-8998}:8998"
+
+    environment:
+      UPSTREAM: ${UPSTREAM:-https://deveuapi.neakasa.com/api}
+      # a broken or odd certificate upstream must not stop the capture; see README
+      VERIFY_TLS: ${VERIFY_TLS:-false}
+      # optional: protect the log UI with a shared secret
+      UI_TOKEN: ${UI_TOKEN:-}
+      MAX_BODY_BYTES: ${MAX_BODY_BYTES:-262144}
+      MEM_LIMIT: ${MEM_LIMIT:-5000}
+
+    volumes:
+      # transcripts outlive the container; this is the only thing worth keeping
+      - ${CAPTURE_DIR:-./captures}:/data
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8998/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 4s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

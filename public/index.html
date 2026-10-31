@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neakasa M1 — capture</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23121419'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%235bd38d'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">
+    <span class="dot" id="liveDot" title="live stream"></span>
+    <strong>Neakasa M1</strong>
+    <span class="sub">capture proxy</span>
+  </div>
+
+  <div class="stats" id="stats">
+    <span class="stat"><b id="sTotal">0</b> requests</span>
+    <span class="stat ok"><b id="sOk">0</b> ok</span>
+    <span class="stat warn"><b id="sClient">0</b> 4xx</span>
+    <span class="stat err"><b id="sServer">0</b> 5xx</span>
+    <span class="stat err"><b id="sErr">0</b> net</span>
+    <span class="stat"><b id="sAvg">0</b> ms</span>
+  </div>
+
+  <div class="upstream" id="upstream" title="upstream target">—</div>
+</header>
+
+<section class="toolbar">
+  <input id="q" type="search" placeholder="filter: path, header, body, status…  ( / )" autocomplete="off">
+  <select id="method" title="method">
+    <option value="">all methods</option>
+    <option>GET</option><option>POST</option><option>PUT</option>
+    <option>DELETE</option><option>PATCH</option><option>OPTIONS</option><option>HEAD</option>
+  </select>
+  <select id="status" title="status">
+    <option value="">all status</option>
+    <option value="2xx">2xx</option>
+    <option value="4xx">4xx</option>
+    <option value="5xx">5xx</option>
+    <option value="error">network error</option>
+  </select>
+  <button id="live" class="toggle on" title="pause the live stream (space)">live</button>
+  <button id="follow" class="toggle on" title="scroll to newest">follow</button>
+  <label class="chk" title="mask token/secret/password/key values in the view">
+    <input type="checkbox" id="mask" checked> mask secrets
+  </label>
+  <span class="grow"></span>
+  <button id="export">export</button>
+  <button id="clear" class="danger">delete logs…</button>
+</section>
+
+<main class="split">
+  <section class="list-pane">
+    <div class="list-head">
+      <span>time</span><span>method</span><span>path</span><span class="num">status</span><span class="num">ms</span>
+    </div>
+    <div id="list" class="list" tabindex="0"></div>
+    <div id="empty" class="empty">Waiting for the box…</div>
+  </section>
+
+  <section class="detail-pane" id="detail">
+    <div class="placeholder">
+      <p>Select a request.</p>
+      <p class="hint">Point the box at this proxy with</p>
+      <pre id="hintCmd">loading…</pre>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

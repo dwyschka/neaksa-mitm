@@ -1,0 +1,116 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  # Builds the image for the runner's architecture, starts it and talks to it.
+  # This is what catches "the Dockerfile builds but the container does not run".
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: build (amd64, loaded locally)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: neakasa-capture:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: run and probe
+        run: |
+          set -euo pipefail
+          docker run -d --name ci-capture \
+            -p 18999:8999 -p 127.0.0.1:18998:8998 \
+            -e UPSTREAM=http://127.0.0.1:9/api \
+            neakasa-capture:ci
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18998/api/health >/dev/null; then
+              echo "health endpoint answered after ${i}s"
+              break
+            fi
+            [ "$i" -eq 30 ] && { echo "health endpoint never came up"; docker logs ci-capture; exit 1; }
+            sleep 1
+          done
+
+          # the UI must serve its assets, and the proxy must answer even when
+          # the upstream is deliberately unreachable (it must not hang or crash)
+          curl -fsS http://127.0.0.1:18998/ | grep -q "Neakasa M1"
+          curl -fsS http://127.0.0.1:18998/app.js >/dev/null
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18999/api/ci-probe || true)
+          [ "$code" = "502" ] || { echo "expected 502 from an unreachable upstream, got $code"; docker logs ci-capture; exit 1; }
+
+          echo "container logs:"
+          docker logs ci-capture
+
+      - name: container logs on failure
+        if: failure()
+        run: docker logs ci-capture || true
+
+  # Multi-arch, pushed to GHCR. Only on master and tags - a pull request gets
+  # the test job and nothing else.
+  publish:
+    needs: test
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
+          labels: |
+            org.opencontainers.image.title=Neakasa M1 capture proxy
+            org.opencontainers.image.description=Forwarding capture proxy and log UI for the Neakasa M1 litter box
+
+      - name: build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,47 @@
+name: neakasa-capture
+
+# Variante fuer den eigenen Stack: kein Build, nur das Image aus der Registry.
+#   docker compose -f compose.stack.yaml up -d
+#
+# Fuer Swarm (`docker stack deploy`) das auskommentierte deploy-Blöckchen
+# aktivieren - Swarm ignoriert `restart:` und braucht die restart_policy.
+
+services:
+  capture:
+    image: ghcr.io/dwyschka/neaksa-mitm:latest
+    restart: unless-stopped
+
+    ports:
+      - "8999:8999"
+      - "${UI_BIND:-127.0.0.1}:${UI_PORT:-8998}:8998"
+
+    environment:
+      UPSTREAM: ${UPSTREAM:-https://deveuapi.neakasa.com/api}
+      VERIFY_TLS: ${VERIFY_TLS:-false}
+      UI_TOKEN: ${UI_TOKEN:-}
+      MAX_BODY_BYTES: ${MAX_BODY_BYTES:-262144}
+      MEM_LIMIT: ${MEM_LIMIT:-5000}
+
+    volumes:
+      - ${CAPTURE_DIR:-./captures}:/data
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8998/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 4s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # deploy:
+    #   replicas: 1
+    #   restart_policy:
+    #     condition: any
+    #   resources:
+    #     limits:
+    #       memory: 256M
