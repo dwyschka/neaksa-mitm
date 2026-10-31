@@ -1,5 +1,7 @@
 # Neakasa M1 — capture proxy + log UI
 
+[![build](https://github.com/dwyschka/neaksa-mitm/actions/workflows/build.yml/badge.svg)](https://github.com/dwyschka/neaksa-mitm/actions/workflows/build.yml)
+
 Ein Container, der die Backend-API der Katzenklos *entgegennimmt*, jedes Paket
 unverändert an das echte Backend weiterreicht und dabei alles mitschreibt: die
 Geräte-Identität, die Header, die Bodies, die Antworten, die Latenz.
@@ -99,9 +101,9 @@ Tags: `latest` (nur `master`), `sha-<kurz>`, `x.y.z` bei Git-Tags.
 docker pull ghcr.io/dwyschka/neaksa-mitm:latest
 ```
 
-Pull Requests bauen und testen nur, sie pushen nichts. Das erste veröffentlichte
-Paket ist **privat** – entweder in den GitHub-Package-Einstellungen auf public
-stellen oder auf dem Zielhost einmal `docker login ghcr.io` machen.
+Pull Requests bauen und testen nur, sie pushen nichts. Das Paket ist anonym
+pullbar; stellst du es auf privat, braucht der Zielhost einmal
+`docker login ghcr.io`.
 
 ## Konfiguration
 
